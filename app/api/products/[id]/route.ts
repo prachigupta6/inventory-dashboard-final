@@ -6,7 +6,7 @@ import User from "@/models/User";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-// Helper to get params safely
+// Helper to get params safely for Next.js 15+
 async function getParams(params: any) {
   return params instanceof Promise ? await params : params;
 }
@@ -14,7 +14,9 @@ async function getParams(params: any) {
 // --- 1. GET (Fetches data to fill your Edit Form) ---
 export async function GET(request: Request, { params }: { params: any }) {
   try {
-    const { id } = await getParams(params);
+    const resolvedParams = await getParams(params);
+    const id = resolvedParams.id;
+    
     await connectDB();
     
     const product = await Product.findById(id);
@@ -36,7 +38,9 @@ export async function DELETE(request: Request, { params }: { params: any }) {
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { id } = await getParams(params);
+    const resolvedParams = await getParams(params);
+    const id = resolvedParams.id;
+
     await connectDB();
 
     const product = await Product.findById(id);
@@ -76,7 +80,8 @@ export async function PUT(request: Request, { params }: { params: any }) {
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { id } = await getParams(params);
+    const resolvedParams = await getParams(params);
+    const id = resolvedParams.id;
     const body = await request.json(); 
 
     await connectDB();
@@ -87,6 +92,7 @@ export async function PUT(request: Request, { params }: { params: any }) {
       if (dbUser?.username) displayName = dbUser.username;
     } catch (e) {}
 
+    // We use { new: true } to get the product AFTER the update is applied
     const updatedProduct = await Product.findByIdAndUpdate(id, body, { new: true });
 
     if (!updatedProduct) {
@@ -102,6 +108,7 @@ export async function PUT(request: Request, { params }: { params: any }) {
 
     return NextResponse.json(updatedProduct);
   } catch (error) {
+    console.error("Update Error:", error);
     return NextResponse.json({ error: "Server Error" }, { status: 500 });
   }
 }
