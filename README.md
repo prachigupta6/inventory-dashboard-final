@@ -46,6 +46,9 @@ NEXTAUTH_SECRET="mysupersecretpassword123"
 NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=dva3r9you
 NEXT_PUBLIC_CLOUDINARY_PRESET=ml_default
 
+
+
+* **VERCEL LINK:** https://inventory-dashboard-final.vercel.app/
 ## Admin Access (Dummy Credentials)
 To access the admin dashboard and manage products, please use the following credentials:
 
