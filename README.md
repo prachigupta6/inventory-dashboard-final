@@ -45,3 +45,9 @@ NEXTAUTH_URL="http://localhost:3000"
 NEXTAUTH_SECRET="mysupersecretpassword123"
 NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=dva3r9you
 NEXT_PUBLIC_CLOUDINARY_PRESET=ml_default
+
+## Admin Access (Dummy Credentials)
+To access the admin dashboard and manage products, please use the following credentials:
+
+- **Email:** dummy@gmail.com
+- **Password:** password123
