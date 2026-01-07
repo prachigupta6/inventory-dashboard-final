@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Inventory Management Dashboard
 
-## Getting Started
+A full-stack server-rendered admin dashboard built with Next.js, designed to manage products, track inventory values, and visualize data in real-time.
 
-First, run the development server:
+## 🚀 Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+* **Secure Authentication:** Admin login protected by NextAuth (Credentials).
+* **Product Management (CRUD):** Create, Read, Update, and Delete inventory items.
+* **Image Upload:** Integration with Cloudinary for product images.
+* **Data Visualization:** Interactive charts showing inventory distribution.
+* **Search & Filter:** Real-time search functionality for the product catalog.
+* **Responsive Design:** Fully responsive UI built with Tailwind CSS.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🛠️ Tech Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+* **Framework:** Next.js (App Router)
+* **Database:** MongoDB & Mongoose
+* **Authentication:** NextAuth.js
+* **Styling:** Tailwind CSS
+* **Charts:** Recharts / Chart.js
+* **Icons:** Lucide React
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## ⚙️ Setup Instructions
 
-## Learn More
+1.  **Clone the repository:**
+    ```bash
+    git clone [https://github.com/prachigupta6/inventory-dashboard-final.git](https://github.com/prachigupta6/inventory-dashboard-final.git)
+    cd inventory-dashboard-final
+    ```
 
-To learn more about Next.js, take a look at the following resources:
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+3.  **Environment Variables:**
+    Create a `.env` file in the root directory and add:
+    ```env
+    MONGODB_URI=your_mongodb_connection_string
+    NEXTAUTH_SECRET=your_secret_key
+    NEXTAUTH_URL=http://localhost:3000
+    NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your_cloud_name
+    NEXT_PUBLIC_CLOUDINARY_PRESET=your_upload_preset
+    ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+4.  **Run the development server:**
+    ```bash
+    npm run dev
+    ```
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🌐 Live Demo
+[Insert your Vercel Link Here]
