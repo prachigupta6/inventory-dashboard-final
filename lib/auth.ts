@@ -26,7 +26,7 @@ export const authOptions: NextAuthOptions = {
           id: user._id.toString(), 
           email: user.email, 
           username: user.username,
-          currency: user.currency || "USD" // Default to USD if not set
+          currency: user.currency || "USD"
         };
       },
     }),
@@ -35,22 +35,27 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   pages: { signIn: "/login" },
   
-  // ✅ ADD CALLBACKS TO PASS DATA TO CLIENT
+  // ✅ FIXED CALLBACKS
   callbacks: {
     async jwt({ token, user, trigger, session }) {
       if (user) {
-        token.currency = user.currency;
-        token.username = user.username;
+        // ✅ FIX: Cast 'user' to 'any' to avoid TypeScript errors
+        token.currency = (user as any).currency;
+        token.username = (user as any).username;
       }
+      
       // Allow client to update session without re-logging in
       if (trigger === "update" && session) {
-        token.currency = session.currency;
-        token.username = session.username;
+        // ✅ FIX: Cast 'session' to 'any' here as well just in case
+        token.currency = (session as any).currency;
+        token.username = (session as any).username;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
+        // ✅ FIX: Cast 'session.user' to 'any'
+        (session.user as any).id = token.sub;
         (session.user as any).currency = token.currency;
         (session.user as any).username = token.username;
       }
