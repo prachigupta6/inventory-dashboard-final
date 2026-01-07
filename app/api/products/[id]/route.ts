@@ -11,7 +11,7 @@ async function getParams(params: any) {
   return params instanceof Promise ? await params : params;
 }
 
-// --- 1. GET (THIS WAS MISSING - IT FILLS YOUR EDIT FORM) ---
+// --- 1. GET (Fetches data to fill your Edit Form) ---
 export async function GET(request: Request, { params }: { params: any }) {
   try {
     const { id } = await getParams(params);
@@ -23,7 +23,6 @@ export async function GET(request: Request, { params }: { params: any }) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
     
-    // Returns the product data (Name, Price, Stock, Image, etc.)
     return NextResponse.json(product);
   } catch (error) {
     console.error("Fetch error:", error);
@@ -31,21 +30,18 @@ export async function GET(request: Request, { params }: { params: any }) {
   }
 }
 
-// --- 2. DELETE (Your existing working code) ---
+// --- 2. DELETE (Removes product and logs activity) ---
 export async function DELETE(request: Request, { params }: { params: any }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id } = await getParams(params);
-
     await connectDB();
 
-    // 1. Get Product Name (for log)
     const product = await Product.findById(id);
     if (!product) return NextResponse.json({ error: "Product not found" }, { status: 404 });
 
-    // 2. Get User (Safely)
     let displayName = session.user?.email || "Unknown";
     try {
       const dbUser = await User.findOne({ email: session.user?.email });
@@ -54,10 +50,8 @@ export async function DELETE(request: Request, { params }: { params: any }) {
       console.log("User lookup failed, using email");
     }
 
-    // 3. Delete
     await Product.findByIdAndDelete(id);
 
-    // 4. Log
     try {
       await Activity.create({
         action: "DELETE",
@@ -76,36 +70,32 @@ export async function DELETE(request: Request, { params }: { params: any }) {
   }
 }
 
-// --- 3. PUT (Your existing working code) ---
+// --- 3. PUT (Updates product and logs activity) ---
 export async function PUT(request: Request, { params }: { params: any }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id } = await getParams(params);
-    const body = await request.json(); // Takes Name, Price, Stock, ImageUrl, Description
+    const body = await request.json(); 
 
     await connectDB();
 
-    // Get User
     let displayName = session.user?.email || "Unknown";
     try {
       const dbUser = await User.findOne({ email: session.user?.email });
       if (dbUser?.username) displayName = dbUser.username;
     } catch (e) {}
 
-    // Update Product
     const updatedProduct = await Product.findByIdAndUpdate(id, body, { new: true });
 
     if (!updatedProduct) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
-    // Log
     await Activity.create({
       action: "UPDATE",
       productName: updatedProduct.name,
-      // Updated this slightly to be generic since you might edit Price/Image too
       details: `Product updated. Stock: ${updatedProduct.stock}`, 
       user: displayName,
     });
