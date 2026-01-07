@@ -1,16 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useParams } from "next/navigation"; // useParams is safer here
+import { useRouter, useParams } from "next/navigation";
 import { Upload, ArrowLeft, Loader2 } from "lucide-react";
 
 export default function EditProductPage() {
   const router = useRouter();
-  const params = useParams(); // Get ID from URL safely
+  const params = useParams();
   const id = params.id as string;
 
   const [loading, setLoading] = useState(false);
-  const [fetching, setFetching] = useState(true); // Loading state for initial data
+  const [fetching, setFetching] = useState(true);
   
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string>("");
@@ -24,48 +24,35 @@ export default function EditProductPage() {
     imageUrl: "",
   });
 
-  // 1. Fetch Existing Data on Load
   useEffect(() => {
     const fetchProduct = async () => {
       try {
         const res = await fetch(`/api/products/${id}`);
         if (!res.ok) throw new Error("Product not found");
-        
         const data = await res.json();
         
-        // Populate form
         setFormData({
-          name: data.name,
-          description: data.description,
-          price: data.price,
-          category: data.category,
-          stock: data.stock,
+          name: data.name || "",
+          description: data.description || "",
+          price: data.price?.toString() || "",
+          category: data.category || "",
+          stock: data.stock?.toString() || "",
           imageUrl: data.imageUrl || "",
         });
 
         if (data.imageUrl) setPreview(data.imageUrl);
       } catch (error) {
-        alert("Error loading product");
-        router.push("/products");
+        console.error(error);
       } finally {
         setFetching(false);
       }
     };
-
     if (id) fetchProduct();
-  }, [id, router]);
+  }, [id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      setPreview(URL.createObjectURL(file));
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -73,163 +60,81 @@ export default function EditProductPage() {
     setLoading(true);
 
     try {
-      let finalImageUrl = formData.imageUrl;
-
-      // 2. If user selected a NEW file, upload it. Otherwise keep old URL.
-      if (imageFile) {
-        const imageFormData = new FormData();
-        imageFormData.append("file", imageFile);
-        imageFormData.append("upload_preset", process.env.NEXT_PUBLIC_CLOUDINARY_PRESET || "ml_default");
-        
-        const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-        const uploadRes = await fetch(
-          `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-          { method: "POST", body: imageFormData }
-        );
-
-        if (!uploadRes.ok) throw new Error("Image upload failed");
-        const fileData = await uploadRes.json();
-        finalImageUrl = fileData.secure_url;
-      }
-
-      // 3. Send PUT Request
-      const payload = {
-        name: formData.name,
-        description: formData.description,
-        category: formData.category,
-        price: parseFloat(formData.price),
-        stock: parseInt(formData.stock),
-        imageUrl: finalImageUrl,
-      };
-
       const res = await fetch(`/api/products/${id}`, {
-        method: "PUT", // UPDATE method
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          ...formData,
+          price: parseFloat(formData.price),
+          stock: parseInt(formData.stock),
+        }),
       });
 
-      if (!res.ok) throw new Error("Failed to update product");
-
+      if (!res.ok) throw new Error("Update failed");
       router.push("/products");
       router.refresh();
-
-    } catch (error: any) {
-      alert("Update Failed: " + error.message);
+    } catch (error) {
+      alert("Error updating product");
     } finally {
       setLoading(false);
     }
   };
 
-  if (fetching) {
-    return <div className="flex justify-center items-center h-screen"><Loader2 className="animate-spin text-blue-500" size={40} /></div>;
-  }
+  if (fetching) return <div className="flex justify-center p-20"><Loader2 className="animate-spin" /></div>;
 
   return (
-    <div className="max-w-4xl mx-auto p-8">
-      <button onClick={() => router.back()} className="flex items-center text-gray-500 hover:text-gray-800 mb-6">
-        <ArrowLeft size={20} className="mr-2" /> Cancel Edit
-      </button>
-
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Edit Product</h1>
-        
-        <form onSubmit={handleSubmit} className="space-y-6">
-          
-          {/* Image Upload */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Product Image</label>
-            <div className="flex items-center gap-6">
-              <div className="relative w-32 h-32 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
-                {preview ? <img src={preview} alt="Preview" className="w-full h-full object-cover" /> : <Upload className="text-gray-400" />}
-              </div>
-              <label className="cursor-pointer bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50">
-                Change Image
-                <input type="file" className="hidden" accept="image/*" onChange={handleImageChange} />
-              </label>
-            </div>
-          </div>
-
-          {/* Name */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Product Name</label>
-            <input 
-              name="name" 
-              value={formData.name} 
-              onChange={handleChange}
-              required 
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-black"
-            />
-          </div>
-
-          {/* Category */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Category</label>
-            <select 
-              name="category" 
-              value={formData.category} 
-              onChange={handleChange}
-              required 
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white text-black"
-            >
-              <option value="">Select Category</option>
-              <option value="Electronics">Electronics</option>
-              <option value="Clothing">Clothing</option>
-              <option value="Home">Home & Garden</option>
-              <option value="Accessories">Accessories</option>
-            </select>
-          </div>
-
-          {/* Description */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Description</label>
-            <textarea 
-              name="description" 
-              value={formData.description} 
-              onChange={handleChange}
-              required 
-              rows={4}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-black"
-            />
-          </div>
-
-          {/* Price & Stock */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Price ($)</label>
-              <input 
-                name="price" 
-                type="number" 
-                value={formData.price} 
-                onChange={handleChange}
-                required 
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-black"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Stock</label>
-              <input 
-                name="stock" 
-                type="number" 
-                value={formData.stock} 
-                onChange={handleChange}
-                required 
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-black"
-              />
-            </div>
-          </div>
-
-          <div className="pt-4">
-            <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 flex items-center justify-center">
-              {loading ? (
-                <><Loader2 className="animate-spin mr-2"/> Updating...</>
-              ) : (
-                "Save Changes"
-              )}
-            </button>
-          </div>
-
-        </form>
-      </div>
+    <div className="max-w-2xl mx-auto p-10 bg-white shadow-xl rounded-2xl mt-10">
+      <button onClick={() => router.back()} className="flex items-center text-gray-500 mb-5"><ArrowLeft size={16} /> Back</button>
+      <h1 className="text-2xl font-bold mb-5 text-black">Edit Product Details</h1>
+      
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-black font-semibold">Product Name</label>
+          <input 
+            name="name" 
+            value={formData.name} 
+            onChange={handleChange} 
+            className="w-full border p-2 rounded text-black bg-gray-50 focus:ring-2 focus:ring-blue-500" 
+            placeholder="Type name here..."
+            required 
+          />
+        </div>
+        <div>
+          <label className="block text-black font-semibold">Price ($)</label>
+          <input 
+            name="price" 
+            type="number"
+            value={formData.price} 
+            onChange={handleChange} 
+            className="w-full border p-2 rounded text-black bg-gray-50" 
+            required 
+          />
+        </div>
+        <div>
+          <label className="block text-black font-semibold">Stock Quantity</label>
+          <input 
+            name="stock" 
+            type="number"
+            value={formData.stock} 
+            onChange={handleChange} 
+            className="w-full border p-2 rounded text-black bg-gray-50" 
+            required 
+          />
+        </div>
+        <div>
+          <label className="block text-black font-semibold">Description</label>
+          <textarea 
+            name="description" 
+            value={formData.description} 
+            onChange={handleChange} 
+            className="w-full border p-2 rounded text-black bg-gray-50" 
+            rows={3}
+          />
+        </div>
+        <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold">
+          {loading ? "Saving Changes..." : "Save All Changes"}
+        </button>
+      </form>
     </div>
   );
 }
