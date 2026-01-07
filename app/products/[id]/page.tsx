@@ -1,132 +1,210 @@
-import connectDB from "@/lib/db";
-import Product from "@/models/Product";
+"use client";
+
+import { useState, useEffect, use } from "react"; // 1. Added 'use'
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Edit, Package, ShoppingCart, Tag, BarChart, Image as ImageIcon } from "lucide-react";
-import { notFound } from "next/navigation";
+import { Image as ImageIcon } from "lucide-react"; 
 
-// ✅ FIXED IMPORT: Point to lib/auth
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) { // 2. Fixed Type
+  const router = useRouter();
+  const resolvedParams = use(params); // 3. Unwrap the ID so it actually exists
+  const id = resolvedParams?.id;
 
-const getSymbol = (code: string) => {
-  switch (code) {
-    case "EUR": return "€";
-    case "GBP": return "£";
-    case "INR": return "₹";
-    case "JPY": return "¥";
-    default: return "$";
-  }
-};
+  const [loading, setLoading] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
 
-export default async function ProductDetailsPage({ 
-  params 
-}: { 
-  params: Promise<{ id: string }> 
-}) {
-  const { id } = await params;
+  const [formData, setFormData] = useState({
+    name: "",
+    price: "",
+    stock: "",
+    category: "Electronics", 
+    description: "",
+    imageUrl: "",
+  });
 
-  await connectDB();
-  
-  const session = await getServerSession(authOptions);
-  const currencyCode = (session?.user as any)?.currency || "USD";
-  const currencySymbol = getSymbol(currencyCode);
+  useEffect(() => {
+    const getProduct = async () => {
+      try {
+        const res = await fetch(`/api/products/${id}`);
+        const data = await res.json();
+        // Look for data in either data.product or data directly
+        const product = data.product || data; 
 
-  const product = await Product.findById(id).lean() as any;
+        if (product) {
+          setFormData({
+            name: product.name || "",
+            price: product.price?.toString() || "", // Convert to string for input
+            stock: product.stock?.toString() || "", // Convert to string for input
+            category: product.category || "Electronics",
+            description: product.description || "",
+            imageUrl: product.imageUrl || "",
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load product", error);
+      }
+    };
+    if (id) getProduct();
+  }, [id]);
 
-  if (!product) return notFound();
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Photo is too large. Please select an image under 5MB.");
+      return;
+    }
+
+    setImageUploading(true);
+    const data = new FormData();
+    data.append("file", file);
+    data.append("upload_preset", "ml_default");
+    const cloudName = "dva3r9you";         
+
+    try {
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+        method: "POST",
+        body: data,
+      });
+
+      const fileData = await res.json();
+      if (fileData.secure_url) {
+        setFormData((prev) => ({ ...prev, imageUrl: fileData.secure_url }));
+      }
+    } catch (error) {
+      alert("Image upload failed.");
+    } finally {
+      setImageUploading(false);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/products/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            ...formData,
+            price: parseFloat(formData.price),
+            stock: parseInt(formData.stock)
+        }),
+      });
+
+      if (response.ok) {
+        router.push("/products");
+        router.refresh();
+      } else {
+        alert("Failed to update.");
+      }
+    } catch (error) {
+      alert("Error updating.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
-      <div className="flex justify-between items-center mb-8">
-        <Link href="/products" className="flex items-center text-gray-500 hover:text-gray-800 transition-all font-medium">
-          <ArrowLeft size={20} className="mr-2" /> Back to Catalog
-        </Link>
-        <Link 
-          href={`/products/${product._id}`} 
-          className="bg-blue-600 text-white px-6 py-2.5 rounded-xl flex items-center gap-2 hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all"
-        >
-          <Edit size={18} /> Update Info
-        </Link>
-      </div>
-
-      <div className="bg-white rounded-3xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden flex flex-col lg:flex-row">
-        
-        <div className="lg:w-1/2 bg-gray-50/50 flex items-center justify-center p-12 lg:p-20 border-r border-gray-100">
-          {product.imageUrl ? (
-            <div className="relative group">
-              <img 
-                src={product.imageUrl} 
-                alt={product.name} 
-                className="max-h-[450px] w-auto object-contain drop-shadow-2xl rounded-2xl transform transition-transform group-hover:scale-105 duration-500" 
-              />
-            </div>
-          ) : (
-            <div className="w-80 h-80 bg-gray-200/50 rounded-3xl flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-300">
-              <ImageIcon size={64} className="mb-4 opacity-20" />
-              <p className="font-medium italic">No visual uploaded</p>
-            </div>
-          )}
-        </div>
-
-        <div className="lg:w-1/2 p-10 lg:p-14 flex flex-col">
-          <div className="mb-8">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest border border-blue-100">
-                {product.category}
-              </span>
-              {product.stock < 5 && (
-                <span className="bg-red-50 text-red-600 px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest border border-red-100">
-                  Low Stock
-                </span>
+    <div className="max-w-md mx-auto mt-10 mb-20">
+      <h1 className="text-2xl font-bold mb-4 text-gray-800">Edit Product</h1>
+      
+      <form onSubmit={handleSubmit} className="bg-white p-6 shadow-md rounded-lg text-gray-700">
+        <div className="mb-6">
+          <label className="block font-bold mb-2">Product Image</label>
+          <div className="flex items-center gap-4">
+            <div className="w-20 h-20 border border-gray-200 rounded flex items-center justify-center bg-gray-50 overflow-hidden">
+              {formData.imageUrl ? (
+                <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+              ) : (
+                <ImageIcon className="text-gray-300" size={24} />
               )}
             </div>
-            <h1 className="text-4xl font-black text-gray-900 leading-tight">{product.name}</h1>
-          </div>
-
-          <div className="grid grid-cols-2 gap-8 mb-10 pb-10 border-b border-gray-100">
-            <div>
-              <p className="text-gray-400 text-xs uppercase font-black tracking-widest mb-1">MSRP / Price</p>
-              <p className="text-4xl font-black text-green-600">{currencySymbol}{product.price.toLocaleString()}</p>
-            </div>
-            <div>
-              <p className="text-gray-400 text-xs uppercase font-black tracking-widest mb-1">Available Units</p>
-              <p className={`text-4xl font-black ${product.stock < 5 ? "text-red-500" : "text-gray-900"}`}>
-                {product.stock}
-              </p>
-            </div>
-          </div>
-
-          <div className="mb-10">
-            <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-              <Tag size={14} className="text-blue-500" /> Narrative / Description
-            </h3>
-            <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100">
-              <p className="text-gray-700 leading-relaxed whitespace-pre-line text-lg italic font-medium">
-                {product.description || "The curator has not provided a description for this asset yet."}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-auto pt-6">
-             <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-              <BarChart size={14} className="text-purple-500" /> Life-Cycle Stats
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-5 rounded-2xl text-white shadow-lg shadow-blue-100">
-                <p className="text-blue-100 text-xs font-bold uppercase mb-1">Total Sold</p>
-                <p className="text-3xl font-black">{product.sold || 0}</p>
-              </div>
-              <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-5 rounded-2xl text-white shadow-lg shadow-purple-100">
-                <p className="text-purple-100 text-xs font-bold uppercase mb-1">Net Revenue</p>
-                <p className="text-3xl font-black">
-                  {currencySymbol}{((product.sold || 0) * product.price).toLocaleString()}
-                </p>
-              </div>
+            <div className="flex-1">
+              <input 
+                type="file" 
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              />
+              {imageUploading && <p className="text-xs text-blue-600 mt-1">Uploading...</p>}
             </div>
           </div>
         </div>
-      </div>
+
+        <div className="mb-4">
+          <label className="block font-bold mb-2">Product Name</label>
+          <input 
+            type="text" name="name" 
+            value={formData.name} onChange={handleChange} 
+            className="w-full border border-gray-300 p-2 rounded text-black bg-white focus:ring-2 focus:ring-blue-500 outline-none" 
+            required 
+            autoFocus
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="block font-bold mb-2">Price ($)</label>
+            <input 
+              type="number" name="price" step="0.01" 
+              value={formData.price} onChange={handleChange} 
+              className="w-full border border-gray-300 p-2 rounded text-black bg-white focus:ring-2 focus:ring-blue-500 outline-none" 
+              required 
+            />
+          </div>
+          <div>
+            <label className="block font-bold mb-2">Stock</label>
+            <input 
+              type="number" name="stock" 
+              value={formData.stock} onChange={handleChange} 
+              className="w-full border border-gray-300 p-2 rounded text-black bg-white focus:ring-2 focus:ring-blue-500 outline-none" 
+              required 
+            />
+          </div>
+        </div>
+
+        <div className="mb-4">
+          <label className="block font-bold mb-2">Category</label>
+          <select 
+            name="category" 
+            value={formData.category} onChange={handleChange}
+            className="w-full border border-gray-300 p-2 rounded text-black bg-white"
+          >
+            <option>Electronics</option>
+            <option>Clothing</option>
+            <option>Home</option>
+            <option>Beauty</option>
+          </select>
+        </div>
+
+        <div className="mb-4">
+          <label className="block font-bold mb-2">Description</label>
+          <textarea 
+            name="description" 
+            value={formData.description} onChange={handleChange}
+            className="w-full border border-gray-300 p-2 rounded text-black bg-white h-24 focus:ring-2 focus:ring-blue-500 outline-none"
+            required
+          />
+        </div>
+        
+        <div className="flex justify-between mt-6">
+           <Link href="/products" className="text-gray-500 hover:text-gray-700 py-2">Cancel</Link>
+           <button 
+             type="submit" 
+             disabled={loading || imageUploading}
+             className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 font-bold disabled:bg-gray-400"
+           >
+             {loading ? "Updating..." : "Update Product"}
+           </button>
+        </div>
+      </form>
     </div>
   );
 }
-// forcing update
