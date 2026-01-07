@@ -185,7 +185,7 @@ export default function SettingsPage() {
           <div className="bg-white p-6 rounded-lg shadow-md border border-red-100">
             <div className="flex items-center gap-2 mb-4 text-red-600">
               <ShieldAlert size={24} />
-              <h2 className="text-xl font-bold">Signout</h2>
+              <h2 className="text-xl font-bold">Sign Out of Dashboard</h2>
             </div>
             <button onClick={() => signOut({ callbackUrl: "/login" })} className="flex items-center justify-center gap-2 w-full bg-red-50 text-red-600 border border-red-200 py-3 rounded font-bold hover:bg-red-600 hover:text-white transition-all">
               <LogOut size={20} /> Sign Out
